@@ -1,64 +1,85 @@
 import React from "react";
 import { connect } from "react-redux";
 import * as courseActions from "../../redux/actions/courseActions";
-
-import { bindActionCreators } from "redux";
-
+import * as authorActions from "../../redux/actions/authorActions";
+import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
+import { bindActionCreators } from "redux";
+import CourseList from "./CourseList";
+import Spinner from "../common/Spinner";
 
 class CoursesPage extends React.Component {
-  state = {
-    course: {
-      title: ""
+  componentDidMount() {
+    const { courses, authors, actions } = this.props;
+
+    if (courses.length === 0) {
+      actions.loadCourses().catch(error => {
+        alert("Loading courses failed" + error);
+      });
     }
-  };
 
-  handleChange = event => {
-    const course = { ...this.state.course, title: event.target.value };
-    this.setState({ course });
-  };
-
-  handleSubmit = event => {
-    event.preventDefault();
-    this.props.actions.createCourse(this.state.course);
-  };
+    if (authors.length === 0) {
+      actions.loadAuthors().catch(error => {
+        alert("Loading authors failed" + error);
+      });
+    }
+  }
 
   render() {
     return (
-      <form onSubmit={this.handleSubmit}>
-        <h2>Courses</h2>
-        <h3>Add Course</h3>
-        <input
-          type="text"
-          onChange={this.handleChange}
-          value={this.state.course.title}
-        />
+      <>
+        {this.props.isLoading ? (
+          <Spinner />
+        ) : (
+          <>
+            <h2>Courses</h2>
 
-        <input type="submit" value="Save" />
-        {this.props.courses.map(course => {
-          return <div key={course.title}>{course.title}</div>;
-        })}
-      </form>
+            <Link to="/course" className="btn btn-primary">
+              Add Course
+            </Link>
+
+            <CourseList
+              courses={this.props.courses}
+              onDelete={this.props.deleteCourse}
+            />
+          </>
+        )}
+      </>
     );
   }
 }
 
 CoursesPage.propTypes = {
+  authors: PropTypes.array.isRequired,
+  courses: PropTypes.array.isRequired,
   actions: PropTypes.object.isRequired,
-  courses: PropTypes.arrayOf({
-    title: PropTypes.string.isRequired
-  }).isRequired
+  isLoading: PropTypes.bool.isRequired,
+  deleteCourse: PropTypes.func.isRequired
 };
 
 function mapStateToProps(state) {
   return {
-    courses: state.courses
+    courses:
+      state.authors.length === 0
+        ? []
+        : state.courses.map(course => {
+            return {
+              ...course,
+              authorName: state.authors.find(a => a.id === course.authorId).name
+            };
+          }),
+    authors: state.authors,
+    isLoading: state.apiStatusCallsInProgess > 0
   };
 }
 
 function mapDispatchToProps(dispatch) {
   return {
-    actions: bindActionCreators(courseActions, dispatch)
+    actions: {
+      loadCourses: bindActionCreators(courseActions.loadCourses, dispatch),
+      loadAuthors: bindActionCreators(authorActions.loadAuthors, dispatch),
+      deleteCourse: bindActionCreators(courseActions.deleteCourse, dispatch)
+    }
   };
 }
 
